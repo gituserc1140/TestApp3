@@ -1,10 +1,25 @@
 import streamlit as st
 import requests
 import os
+import logging
 
-# Function to fetch blog content using Cohere API
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
 def fetch_blog_content(prompt):
-    cohere_api_key = st.secrets["cohere_api_key"]
+    """
+    Fetches blog content from the Cohere API based on the provided prompt.
+
+    Args:
+        prompt (str): The topic or prompt for generating the blog content.
+
+    Returns:
+        str: The generated blog content or an error message if the request fails.
+    """
+    cohere_api_key = os.getenv("COHERE_API_KEY")
+    if not cohere_api_key:
+        raise ValueError("COHERE_API_KEY environment variable is not set.")
+
     url = "https://api.cohere.ai/generate"
     headers = {
         "Authorization": f"Bearer {cohere_api_key}",
@@ -16,11 +31,13 @@ def fetch_blog_content(prompt):
         "max_tokens": 500,
         "temperature": 0.7,
     }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
         return response.json()["generations"][0]["text"]
-    else:
-        return "Failed to fetch content."
+    except requests.exceptions.RequestException as e:
+        logging.error(f"API request failed: {e}")
+        return "Failed to fetch content. Please try again later."
 
 # Streamlit app
 st.title("Cohere Powered Blog")
